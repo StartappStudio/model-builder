@@ -7,6 +7,7 @@ export { IComponentDescriptor } from './controller/component-descriptor';
 export { FormBuilderComponent } from './components/form-builder-component';
 export { BaseFormBuilderDescriptor } from './components/base-form-builder-descriptor';
 export { Container } from './components/container/container';
+export { ContainerComponentDescriptor } from './components/container/container-descriptor';
 export { FormBuilderContext } from './context';
 export { light } from './themes/light';
 export { dark } from './themes/dark';

@@ -330,6 +330,29 @@ class Container extends FormBuilderComponent {
 }
 Container.contextType = FormBuilderContext;
 
+class ContainerComponentDescriptor {
+    constructor() {
+        this.name = 'container';
+    }
+    resolveChildComponents(model) {
+        return [
+            {
+                property: 'components',
+                model: model.md.components
+            }
+        ];
+    }
+    cloneModel(properties = {}) {
+        return Object.assign({}, properties, { components: [] });
+    }
+    updateProperties(model, viewModel) {
+        return Object.assign({}, model, { components: viewModel.components });
+    }
+    render(model) {
+        return createElement(Container, Object.assign({}, model));
+    }
+}
+
 const typography = {
     sizes: {
         text: '0.8125rem',
@@ -845,4 +868,4 @@ class ModelBuilder extends Component {
     }
 }
 
-export { BaseFormBuilderDescriptor, ComponentRegistry, Container, DefaultComponentDescriptor, FormBuilderComponent, FormBuilderContext, KeyCode, ModelBuilder, TUndoRedoService, dark, light };
+export { BaseFormBuilderDescriptor, ComponentRegistry, Container, ContainerComponentDescriptor, DefaultComponentDescriptor, FormBuilderComponent, FormBuilderContext, KeyCode, ModelBuilder, TUndoRedoService, dark, light };

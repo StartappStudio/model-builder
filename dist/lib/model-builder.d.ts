@@ -12,6 +12,7 @@ export interface IModelBuilderProps {
     copy: (models: IModel[]) => void;
     copied: () => IModel[];
     theme: IModelBuilderTheme;
+    model: any;
     propsName?: PropertiesFieldName;
 }
 export declare enum KeyCode {

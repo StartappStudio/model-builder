@@ -17,6 +17,7 @@ export interface IModelBuilderProps {
     copy: (models: IModel[]) => void;
     copied: () => IModel[];
     theme: IModelBuilderTheme;
+    model: any;
     propsName?: PropertiesFieldName;
 }
 
@@ -49,6 +50,7 @@ export class ModelBuilder extends React.Component<IModelBuilderProps, IViewModel
         super(props);
 
         this.controllerBuilder = new ControllerBuilder(props.registry, props.propsName || 'props');
+        this.controllerBuilder.model = this.props.model;
         this.undoRedoService = props.undoRedoService;
 
         this.state = this.controllerBuilder.viewModel;

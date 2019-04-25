@@ -1,0 +1,45 @@
+{
+  "name": "@start-app/model-builder",
+  "version": "1.0.0",
+  "description": "The Startapp.Studio Form builder",
+  "main": "dist/model-builder.esm",
+  "typings": "dist/index.d.ts",
+  "scripts": {
+    "build:package": "npx rollup -c",
+    "build:test": "npx typescript -p ./tsconfig-spec.json",
+    "test": "npm run build:test && npx jasmine --config=jasmine.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/StartappStudio/model-builder.git"
+  },
+  "keywords": [
+    "startapp",
+    "formbuilder"
+  ],
+  "author": "Andrey Gromozdov",
+  "license": "MIT",
+  "dependencies": {
+    "@start-app/form-builder-model": "^1.0.2",
+    "@types/eventemitter3": "^2.0.2",
+    "@types/object-path": "^0.11.0",
+    "@types/react": "^16.8.14",
+    "eventemitter3": "^3.1.0",
+    "object-path": "^0.11.4",
+    "react": "^16.8.6"
+  },
+  "devDependencies": {
+    "@types/jasmine": "^3.3.12",
+    "@types/styled-components": "^4.1.14",
+    "jasmine": "^3.4.0",
+    "remove": "^0.1.5",
+    "rollup": "^1.10.1",
+    "rollup-plugin-typescript2": "^0.21.0",
+    "styled-components": "^4.2.0",
+    "typescript": "^3.4.5"
+  },
+  "bugs": {
+    "url": "https://github.com/StartappStudio/model-builder/issues"
+  },
+  "homepage": "https://github.com/StartappStudio/model-builder#readme"
+}

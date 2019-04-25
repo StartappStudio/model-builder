@@ -1,0 +1,5 @@
+import * as styledComponents from 'styled-components';
+import { IModelBuilderTheme } from './interfaces';
+declare const styled: styledComponents.ThemedBaseStyledInterface<IModelBuilderTheme>, css: styledComponents.BaseThemedCssFunction<IModelBuilderTheme>, createGlobalStyle: <P extends object = {}>(first: styledComponents.CSSObject | TemplateStringsArray | styledComponents.InterpolationFunction<styledComponents.ThemedStyledProps<P, IModelBuilderTheme>>, ...interpolations: styledComponents.Interpolation<styledComponents.ThemedStyledProps<P, IModelBuilderTheme>>[]) => styledComponents.GlobalStyleComponent<P, IModelBuilderTheme>, keyframes: (strings: TemplateStringsArray | styledComponents.CSSKeyframes, ...interpolations: styledComponents.SimpleInterpolation[]) => styledComponents.Keyframes, ThemeProvider: import("react").ComponentClass<styledComponents.ThemeProviderProps<IModelBuilderTheme, IModelBuilderTheme>, any>;
+export { css, createGlobalStyle, keyframes, ThemeProvider };
+export default styled;

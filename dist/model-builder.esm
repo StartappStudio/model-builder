@@ -1,0 +1,848 @@
+import { createContext, Component, createElement } from 'react';
+import * as styledComponents from 'styled-components';
+import styledComponents__default, {  } from 'styled-components';
+import { FormModel } from '@start-app/form-builder-model';
+import { EventEmitter } from 'eventemitter3';
+import { get } from 'object-path';
+
+const FormBuilderContext = createContext({
+    registry: null,
+    events: null,
+    onViewModel: null,
+    onComponentModel: null
+});
+
+var ComponentState;
+(function (ComponentState) {
+    ComponentState["None"] = "none";
+    ComponentState["Selected"] = "selected";
+    ComponentState["Cut"] = "cut";
+})(ComponentState || (ComponentState = {}));
+
+const { default: styled, css, createGlobalStyle, keyframes, ThemeProvider } = styledComponents;
+
+const ticker = keyframes `
+    0% {
+        background-position: left top, right bottom, left bottom, right top;
+    }
+    100% {
+        background-position: left 15px top, right 15px bottom, left bottom 15px, right top 15px;
+    }
+`;
+const cut = css `
+    width: auto;
+    background-image:
+        linear-gradient(90deg, ${(props) => props.theme.containerHost.activeBorderColor} 50%, transparent 50%),
+        linear-gradient(90deg, ${(props) => props.theme.containerHost.activeBorderColor} 50%, transparent 50%),
+        linear-gradient(0deg, ${(props) => props.theme.containerHost.activeBorderColor} 50%, transparent 50%),
+        linear-gradient(0deg, ${(props) => props.theme.containerHost.activeBorderColor} 50%, transparent 50%);
+    background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+    background-size: 5px 1px, 5px 1px, 1px 5px, 1px 5px;
+    background-position: left top, right bottom, left bottom, right top;
+    animation: ${ticker} 1s infinite linear;
+    border: 1px;
+`;
+const ComponentHostContainer = styled.div `
+    background: ${(props) => props.theme.componentHostContainer.background};
+`;
+const ContainerHost = styled.div `
+    font-family: ${(props) => props.theme.typography.font};
+    font-size: ${(props) => props.theme.typography.sizes.text};
+    width: 100%;
+    height: 100%;
+    position: relative;
+    box-sizing: border-box;
+    border-width: 1px;
+    border-style: dashed;
+    border-color: ${(props) => {
+    if (props.state.state === ComponentState.Selected) {
+        return props.theme.containerHost.activeBorderColor;
+    }
+    else if (props.state.name !== 'container') {
+        return props.theme.componentHostContainer.background;
+    }
+    else {
+        return props.theme.containerHost.borderColor;
+    }
+}};
+
+    ${(props) => props.state.state === ComponentState.Cut ? cut : ''}
+    
+    &.active-container {
+        border-color: ${(props) => props.theme.containerHost.activeBorderColor};
+    }
+    & > .active-badge {
+        display: block;
+    }
+`;
+const badge = styled.div `
+    padding: 3px 5px;
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    background-color: ${(props) => props.theme.badge.background};
+    transform: translateY(-100%);
+    border: 1px dashed ${(props) => props.theme.badge.background};
+    font-size: ${(props) => props.theme.typography.sizes.badge};
+    color: ${(props) => props.theme.badge.textColor};
+    line-height: 1;
+    z-index: 10000;
+    pointer-events: none;
+`;
+const ContainerBadge = styled(badge) `
+    display: ${(props) => props.show ? 'block' : 'none'};
+`;
+const container = styled.div `
+    display: flex;
+`;
+const flexStyle = {
+    around: 'space-around',
+    between: 'space-between',
+    center: 'center',
+    end: 'flex-end',
+    start: 'flex-start'
+};
+const ContainerWrap = styled(container) `
+    height: 100%;
+    width: 100%;
+    overflow-x: auto;
+    padding: 20px 9px;
+    box-sizing: border-box;
+    flex-wrap: ${(props) => props.md.wrap ? 'wrap' : 'nowrap'};
+    flex-direction: ${(props) => {
+    if (props.md.direction === 'horizontal') {
+        return !props.md.reverse ? 'row' : 'row-reverse';
+    }
+    else {
+        return !props.md.reverse ? 'column' : 'column-reverse';
+    }
+}};
+    align-items: ${(props) => {
+    if (props.md.direction === 'horizontal') {
+        return flexStyle[props.md.vertical];
+    }
+    else {
+        return flexStyle[props.md.horizontal];
+    }
+}};
+    justify-content: ${(props) => {
+    if (props.md.direction === 'horizontal') {
+        if (props.md.space === 'none') {
+            return flexStyle[props.md.horizontal];
+        }
+        else {
+            return flexStyle[props.md.space];
+        }
+    }
+    else {
+        if (props.md.space === 'none') {
+            return flexStyle[props.md.vertical];
+        }
+        else {
+            return flexStyle[props.md.space];
+        }
+    }
+}};
+    
+    ::-webkit-scrollbar-button {
+        background-repeat:no-repeat;
+        width:5px;
+        height:0px
+    }
+    ::-webkit-scrollbar-track {
+      background-color: ${(props) => props.theme.containerWrap.scrollbarTrackColor};
+    }
+    ::-webkit-scrollbar-thumb {
+        -webkit-border-radius: 0px;
+        border-radius: 0px;
+        background-color: ${(props) => props.theme.containerWrap.scrollbarThumbColor};
+    }
+    ::-webkit-resizer{
+        background-repeat:no-repeat;
+        width:4px;
+        height:0px
+    }
+    ::-webkit-scrollbar{
+        height: 7px;
+    }
+`;
+
+class ComponentHost extends Component {
+    constructor(props) {
+        super(props);
+        this.updateModel = (model) => {
+            this.setState({ model });
+        };
+    }
+    render() {
+        const model = this.props.model;
+        this.context.onViewModel(model, this.updateModel);
+        const widthStyle = { width: model.md.width };
+        return (createElement(ComponentHostContainer, { "data-name": 'component-host', style: widthStyle, draggable: true, onDragStart: (event) => this.context.events.onDragStart(event, model), onDragOver: (event) => this.onDragOver(event), onDragLeave: () => this.active ? this.resetActive() : void 0, onDrop: (event) => this.onDrop(event, model), onClick: (event) => this.context.events.onClick(event, model) },
+            createElement(ContainerHost, { state: model, ref: (el) => this.containerElement = el },
+                createElement(ContainerBadge, { "data-name": 'container-badge', show: model.state !== ComponentState.None, ref: (el) => this.badgeElement = el }, model.name),
+                this.props.descriptor.render(model))));
+    }
+    setActive() {
+        this.containerElement.classList.add('active-container');
+        this.badgeElement.classList.add('active-badge');
+        this.active = true;
+    }
+    resetActive() {
+        this.containerElement.classList.remove('active-container');
+        this.badgeElement.classList.remove('active-badge');
+        this.active = false;
+    }
+    onDragOver(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!this.active) {
+            this.setActive();
+        }
+    }
+    onDrop(event, viewModel) {
+        this.resetActive();
+        const data = event.dataTransfer.getData('studio-form-builder-plugin');
+        if (data) {
+            this.context.events.onInsertComponent(event, viewModel);
+        }
+        else {
+            this.context.events.onDrop(event, viewModel);
+        }
+    }
+}
+ComponentHost.contextType = FormBuilderContext;
+
+class ComponentRegistry {
+    constructor() {
+        this.components = new Map();
+    }
+    register(componentDescriptor) {
+        this.components.set(componentDescriptor.name, componentDescriptor);
+        componentDescriptor.registry = this;
+    }
+    resolveChildComponents(model) {
+        const component = this.findComponent(model.name);
+        return component.resolveChildComponents(model);
+    }
+    cloneModel(name, properties = {}) {
+        const component = this.findComponent(name);
+        return {
+            name,
+            md: component.cloneModel(properties)
+        };
+    }
+    render(model, index) {
+        const descriptor = this.findComponent(model.name);
+        return createElement(ComponentHost, { descriptor: descriptor, model: model, key: index });
+    }
+    updateProperties(viewModel, model) {
+        const descriptor = this.findComponent(model.name);
+        viewModel.md = descriptor.updateProperties(model.md, viewModel.md);
+    }
+    findComponent(name) {
+        if (!this.components.has(name)) {
+            return this.components.get('DefaultComponent');
+        }
+        return this.components.get(name);
+    }
+}
+
+class BaseFormBuilderDescriptor {
+    constructor() {
+        this.name = '';
+    }
+    resolveChildComponents(model) {
+        return [];
+    }
+    cloneModel(properties = {}) {
+        return JSON.parse(JSON.stringify(properties));
+    }
+    updateProperties(model) {
+        return Object.assign({}, model);
+    }
+}
+
+const DefaultComponent = styledComponents__default.div `
+    border: 1px solid ${(props) => props.theme.defaultComponent.borderColor};
+    color: ${(props) => props.theme.defaultComponent.textColor};
+    padding: 10px;
+    overflow-x: auto;
+    
+    ::-webkit-scrollbar-button {
+        background-repeat:no-repeat;
+        width:5px;
+        height:0px
+    }
+    ::-webkit-scrollbar-track {
+      background-color: ${(props) => props.theme.containerWrap.scrollbarTrackColor};
+    }
+    ::-webkit-scrollbar-thumb {
+        -webkit-border-radius: 0px;
+        border-radius: 0px;
+        background-color: ${(props) => props.theme.containerWrap.scrollbarThumbColor};
+    }
+    ::-webkit-resizer{
+        background-repeat:no-repeat;
+        width:4px;
+        height:0px
+    }
+    ::-webkit-scrollbar{
+        height: 7px;
+    }
+`;
+class DefaultComponentDescriptor extends BaseFormBuilderDescriptor {
+    constructor(name) {
+        super();
+        this.name = name;
+    }
+    render(model) {
+        return createElement(DefaultComponent, null, model.name);
+    }
+}
+
+const TUndoRedoService = Symbol.for('IUndoRedoService');
+
+class FormBuilderComponent extends Component {
+    constructor() {
+        super(...arguments);
+        this.updateProperties = (model) => {
+            this.setState({ model });
+        };
+    }
+    componentDidMount() {
+        if (this.context.onComponentModel) {
+            this.context.onComponentModel(this.props, this.updateProperties);
+        }
+    }
+}
+
+class Container extends FormBuilderComponent {
+    render() {
+        let components = [];
+        if (this.props.md && this.props.md.components) {
+            components = this.props.md.components.map((model, i) => {
+                return this.context.registry.render(model, i);
+            });
+        }
+        return (createElement(ContainerWrap, { md: this.props.md, "data-name": 'container' }, components));
+    }
+}
+Container.contextType = FormBuilderContext;
+
+const typography = {
+    sizes: {
+        text: '0.8125rem',
+        badge: '0.6875rem'
+    },
+    font: '"Roboto", sans-serif',
+    weights: {
+        bold: '700'
+    }
+};
+const light = {
+    componentHostContainer: {
+        background: '#fff'
+    },
+    containerHost: {
+        borderColor: '#8c8b8c',
+        activeBorderColor: '#26b4e3'
+    },
+    containerWrap: {
+        scrollbarTrackColor: '#efefef',
+        scrollbarThumbColor: '#d5d7da'
+    },
+    badge: {
+        background: '#d2eff9',
+        textColor: '#2e90ea'
+    },
+    defaultComponent: {
+        borderColor: '#d5d7da',
+        textColor: '#414141'
+    },
+    typography
+};
+
+const typography$1 = {
+    sizes: {
+        text: '0.8125rem',
+        badge: '0.6875rem'
+    },
+    font: '"Roboto", sans-serif',
+    weights: {
+        bold: '700'
+    }
+};
+const dark = {
+    componentHostContainer: {
+        background: '#1E1E1E'
+    },
+    containerHost: {
+        borderColor: '#333333',
+        activeBorderColor: '#084771'
+    },
+    containerWrap: {
+        scrollbarTrackColor: '#333333',
+        scrollbarThumbColor: '#084771'
+    },
+    badge: {
+        background: '#084771',
+        textColor: '#fff'
+    },
+    defaultComponent: {
+        borderColor: '#333333',
+        textColor: '#DBDBDB'
+    },
+    typography: typography$1
+};
+
+class ModelIdentity {
+    constructor() {
+        this.identity = 0;
+    }
+    get id() {
+        return ++this.identity;
+    }
+}
+// tslint:disable-next-line: max-classes-per-file
+class ViewModelBuilderVisitor {
+    constructor(model, map, modelToViewModelMap, componentRegistry, modelIdentity) {
+        this.model = model;
+        this.map = map;
+        this.modelToViewModelMap = modelToViewModelMap;
+        this.componentRegistry = componentRegistry;
+        this.modelIdentity = modelIdentity;
+        this.model.id = this.model.id === null ? this.modelIdentity.id : this.model.id;
+    }
+    visitComponent(component) {
+        const newModel = this.componentRegistry.cloneModel(component.name, component.md);
+        this.model.md = Object.assign({}, newModel.md);
+        this.map.set(this.model.id, component);
+        this.modelToViewModelMap.set(component, this.model);
+        return this;
+    }
+    visitChildComponent(propertyName, component) {
+        const childModel = this.componentRegistry.cloneModel(component.name, component.md);
+        const child = {
+            id: this.modelIdentity.id,
+            state: ComponentState.None,
+            name: component.name,
+            md: Object.assign({}, childModel.md)
+        };
+        const property = get(this.model.md, propertyName);
+        if (Array.isArray(property)) {
+            property.push(child);
+            return new ViewModelBuilderVisitor(child, this.map, this.modelToViewModelMap, this.componentRegistry, this.modelIdentity);
+        }
+        else {
+            property.id = child.id;
+            property.state = child.state;
+            property.name = child.name;
+            property.md = Object.assign({}, childModel.md);
+            return new ViewModelBuilderVisitor(property, this.map, this.modelToViewModelMap, this.componentRegistry, this.modelIdentity);
+        }
+    }
+    leaveComponent() {
+        // nothing to do
+    }
+}
+
+var EChangeEvents;
+(function (EChangeEvents) {
+    EChangeEvents["ModelChange"] = "ModelChange";
+    EChangeEvents["ViewModelSelect"] = "ViewModelSelect";
+    EChangeEvents["PropertiesChange"] = "PropertiesChange";
+    EChangeEvents["SelectMany"] = "SelectMany";
+})(EChangeEvents || (EChangeEvents = {}));
+class ControllerBuilder {
+    constructor(componentRegistry, propsName) {
+        this.componentRegistry = componentRegistry;
+        this.propsName = propsName;
+        this.onChange = new EventEmitter();
+        this.identityToModelMap = new Map();
+        this.modelToViewModelMap = new Map();
+        this.selected = [];
+        this.copied = [];
+        this.actionMap = {
+            select: (payload) => this.select(payload, ComponentState.Selected),
+            deselect: (payload) => this.select(payload, ComponentState.None),
+            cancelSelection: () => this.clearSelected(),
+            clear: () => this.clear(),
+            insert: (payload) => this.insert(payload),
+            cut: () => this.cut(),
+            copy: () => this.copy(),
+            paste: (payload) => this.paste(payload),
+            updateModel: (payload) => this.updateModel(payload),
+            delete: () => this.delete()
+        };
+    }
+    on(event, fn, context) {
+        this.onChange.on(event, fn, context);
+    }
+    off(event, fn, context, once) {
+        this.onChange.off(event, fn, context, once);
+    }
+    dispatch(action, payload) {
+        if (!this.actionMap[action]) {
+            throw Error(`Unknown action: ${action}`);
+        }
+        const result = this.actionMap[action](payload);
+        return result;
+    }
+    get viewModel() {
+        return this.viewModelInternal;
+    }
+    set model(value) {
+        this.modelInternal = new FormModel(value, (model) => this.componentRegistry.resolveChildComponents(model), this.propsName);
+        if (!value) {
+            return;
+        }
+        this.viewModelInternal = this.makeViewModel(this.modelInternal);
+    }
+    get model() {
+        if (!this.modelInternal) {
+            return undefined;
+        }
+        return this.modelInternal.model;
+    }
+    makeViewModel(model) {
+        this.identityToModelMap.clear();
+        this.modelToViewModelMap.clear();
+        this.selected = [];
+        this.copied = [];
+        const containerModel = this.componentRegistry.cloneModel('container');
+        const viewModelBuilder = new ViewModelBuilderVisitor({
+            id: null,
+            state: ComponentState.None,
+            name: containerModel.name,
+            md: Object.assign({}, containerModel[this.propsName])
+        }, this.identityToModelMap, this.modelToViewModelMap, this.componentRegistry, new ModelIdentity());
+        model.accept(viewModelBuilder);
+        return viewModelBuilder.model;
+    }
+    select(component, select) {
+        let items;
+        if (component instanceof Array) {
+            items = component.map((item) => {
+                this.selectOne(item, select);
+                return item;
+            });
+        }
+        else {
+            items = [this.selectOne(component, select)];
+        }
+        this.onChange.emit(EChangeEvents.SelectMany, items);
+    }
+    selectOne(component, select) {
+        if (component.state === ComponentState.Selected &&
+            select === ComponentState.Selected ||
+            select === ComponentState.None) {
+            component.state = ComponentState.None;
+        }
+        else {
+            component.state = ComponentState.Selected;
+        }
+        if (component.state === ComponentState.Selected) {
+            this.selected.push(component);
+        }
+        else {
+            for (let i = 0; i < this.selected.length; i++) {
+                if (this.selected[i] === component) {
+                    this.selected.splice(i, 1);
+                }
+            }
+        }
+        if (component.state === ComponentState.Selected) {
+            this.onChange.emit(EChangeEvents.ViewModelSelect, this.identityToModelMap.get(component.id));
+        }
+        return component;
+    }
+    clearSelected() {
+        const result = [...this.selected];
+        while (this.selected.length) {
+            const item = this.selected.pop();
+            item.state = ComponentState.None;
+        }
+        this.onChange.emit(EChangeEvents.SelectMany, result);
+    }
+    clearCopied() {
+        const result = [this.copied];
+        while (this.copied.length) {
+            const item = this.copied.pop();
+            item.state = ComponentState.None;
+        }
+        this.onChange.emit(EChangeEvents.SelectMany, result);
+    }
+    clear() {
+        const result = [...this.selected, ...this.copied];
+        this.clearSelected();
+        this.clearCopied();
+        this.onChange.emit(EChangeEvents.SelectMany, result);
+        return result;
+    }
+    insert(payload) {
+        this.internalInsert(payload);
+        this.modelInternal.commit();
+        this.viewModelInternal = this.makeViewModel(this.modelInternal);
+        this.emitModelChange();
+    }
+    internalInsert(payload) {
+        const ref = this.findParentModel(payload.parent);
+        this.modelInternal.insert(payload.item, ref);
+    }
+    findParentModel(parentViewModel) {
+        if (this.identityToModelMap.has(parentViewModel.id)) {
+            return this.identityToModelMap.get(parentViewModel.id);
+        }
+        else {
+            throw Error(`Cannot find parent model for view model`);
+        }
+    }
+    cut() {
+        const result = [...this.selected];
+        this.selected.forEach((item) => {
+            if (item.state === ComponentState.Selected) {
+                item.state = ComponentState.Cut;
+            }
+        });
+        this.copy();
+        this.onChange.emit(EChangeEvents.SelectMany, result);
+        return result;
+    }
+    copy() {
+        if (this.selected.length) {
+            this.copied = this.selected;
+            this.selected = [];
+        }
+        return this.copied.map((item) => this.identityToModelMap.get(item.id));
+    }
+    paste(models) {
+        this.selected.forEach((selected) => {
+            const parent = this.identityToModelMap.get(selected.id);
+            if (this.copied.length) {
+                this.copied.forEach((container) => {
+                    const src = this.identityToModelMap.get(container.id);
+                    if (container.state === ComponentState.Cut) {
+                        this.cutModel(src, parent);
+                    }
+                    else {
+                        this.copyModel(src, parent);
+                    }
+                });
+            }
+            else {
+                if (models && models.length) {
+                    models.forEach((model) => {
+                        this.internalInsert({ item: model, parent: selected });
+                    });
+                }
+            }
+        });
+        this.modelInternal.commit();
+        this.viewModelInternal = this.makeViewModel(this.modelInternal);
+        this.emitModelChange();
+    }
+    cutModel(src, parent) {
+        this.modelInternal.insert(src, parent);
+        this.modelInternal.remove(src);
+    }
+    copyModel(src, parent) {
+        this.modelInternal.insert(JSON.parse(JSON.stringify(src)), parent);
+    }
+    delete() {
+        this.selected.forEach((item) => {
+            const model = this.identityToModelMap.get(item.id);
+            this.modelInternal.remove(model);
+        });
+        this.modelInternal.commit();
+        this.viewModelInternal = this.makeViewModel(this.modelInternal);
+        this.emitModelChange();
+    }
+    updateModel(model) {
+        const viewModel = this.modelToViewModelMap.get(model);
+        this.componentRegistry.updateProperties(viewModel, model);
+        this.onChange.emit(EChangeEvents.PropertiesChange, viewModel);
+    }
+    emitModelChange() {
+        this.onChange.emit(EChangeEvents.ModelChange, this.modelInternal.model);
+    }
+}
+
+const rootStyle = {
+    width: '100%',
+    height: '100%',
+    display: 'block',
+    outline: 'none'
+};
+class Main extends Component {
+    render() {
+        return createElement("div", { style: rootStyle, tabIndex: 1, onKeyDown: (event) => this.keyDown(event) }, this.context.registry.render(this.props, null));
+    }
+    keyDown(event) {
+        this.context.events.onKeyUp(event);
+    }
+}
+Main.contextType = FormBuilderContext;
+
+var KeyCode;
+(function (KeyCode) {
+    KeyCode[KeyCode["Delete"] = 46] = "Delete";
+    KeyCode["Copy"] = "KeyC";
+    KeyCode["Paste"] = "KeyV";
+    KeyCode["Cut"] = "KeyX";
+    KeyCode["Undo"] = "KeyZ";
+    KeyCode["Escape"] = "Escape";
+})(KeyCode || (KeyCode = {}));
+class ModelBuilder extends Component {
+    constructor(props) {
+        super(props);
+        this.modelMap = new Map();
+        this.containersMap = new Map();
+        this.events = this.wrap({
+            onDragStart: (event, model) => this.onDragStart(event, model),
+            onDragOver: () => true,
+            onDrop: (event, model) => this.onDrop(event, model),
+            onInsertComponent: (event, viewModel) => this.onInsertComponent(event, viewModel),
+            onClick: (event, model) => this.onClick(event, model),
+            onKeyUp: (event) => this.onKeyUp(event)
+        });
+        this.onSelectManyListener = (models) => {
+            models.forEach((model) => {
+                const updateFn = this.modelMap.get(model);
+                if (updateFn) {
+                    updateFn(model);
+                }
+            });
+        };
+        this.onPropertiesChangeListener = (model) => {
+            const updateFn = this.modelMap.get(model);
+            if (updateFn) {
+                updateFn(model);
+            }
+        };
+        this.onModelChangeListener = (model) => {
+            this.setState(() => {
+                return this.controllerBuilder.viewModel;
+            });
+            this.props.change(model);
+        };
+        this.onModelSelectListener = (model) => {
+            this.props.select(model);
+        };
+        this.controllerBuilder = new ControllerBuilder(props.registry, props.propsName || 'props');
+        this.undoRedoService = props.undoRedoService;
+        this.state = this.controllerBuilder.viewModel;
+    }
+    componentDidMount() {
+        this.controllerBuilder.on(EChangeEvents.PropertiesChange, this.onPropertiesChangeListener);
+        this.controllerBuilder.on(EChangeEvents.ModelChange, this.onModelChangeListener);
+        this.controllerBuilder.on(EChangeEvents.ViewModelSelect, this.onModelSelectListener);
+        this.controllerBuilder.on(EChangeEvents.SelectMany, this.onSelectManyListener);
+    }
+    componentWillUnmount() {
+        this.controllerBuilder.off(EChangeEvents.PropertiesChange, this.onPropertiesChangeListener);
+        this.controllerBuilder.off(EChangeEvents.ModelChange, this.onModelChangeListener);
+        this.controllerBuilder.off(EChangeEvents.ViewModelSelect, this.onModelSelectListener);
+        this.controllerBuilder.off(EChangeEvents.SelectMany, this.onSelectManyListener);
+    }
+    render() {
+        const context = {
+            registry: this.props.registry,
+            events: this.events,
+            onViewModel: (model, setState) => this.onViewModel(model, setState),
+            onComponentModel: (model, setState) => this.onComponentModel(model, setState)
+        };
+        if (this.state) {
+            return (createElement(ThemeProvider, { theme: this.props.theme },
+                createElement(FormBuilderContext.Provider, { value: context },
+                    createElement(Main, Object.assign({}, this.state)))));
+        }
+        else {
+            return createElement("div", null, "Loading...");
+        }
+    }
+    updateModel(model) {
+        this.controllerBuilder.dispatch('updateModel', model);
+    }
+    onViewModel(model, setState) {
+        this.modelMap.set(model, setState);
+    }
+    onComponentModel(model, setState) {
+        this.containersMap.set(model, setState);
+    }
+    wrap(events) {
+        const result = {};
+        Object.keys(events).forEach((eventName) => {
+            result[eventName] = (event, model) => {
+                const processed = events[eventName](event, model);
+                if (processed) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            };
+        });
+        return result;
+    }
+    onDragStart(event, model) {
+        this.controllerBuilder.dispatch('cancelSelection');
+        this.controllerBuilder.dispatch('select', model);
+        this.controllerBuilder.dispatch('cut');
+        event.stopPropagation();
+        return false;
+    }
+    onDrop(event, model) {
+        this.controllerBuilder.dispatch('select', model);
+        this.controllerBuilder.dispatch('paste');
+        this.props.change(this.controllerBuilder.model);
+        return true;
+    }
+    onInsertComponent(event, viewModel) {
+        const model = JSON.parse(event.dataTransfer.getData('studio-form-builder-plugin'));
+        this.controllerBuilder.dispatch('insert', { item: model, parent: viewModel });
+        this.props.change(this.controllerBuilder.model);
+        return true;
+    }
+    onClick(event, model) {
+        if (!event.ctrlKey) {
+            this.controllerBuilder.dispatch('cancelSelection');
+        }
+        this.controllerBuilder.dispatch('select', model);
+        return true;
+    }
+    onKeyUp(event) {
+        const code = event.nativeEvent.code;
+        const ctrl = event.ctrlKey;
+        if (code === KeyCode.Escape) {
+            this.controllerBuilder.dispatch('clear');
+            return true;
+        }
+        if (event.keyCode === KeyCode.Delete) {
+            this.controllerBuilder.dispatch('delete');
+            return true;
+        }
+        if (ctrl && (code === KeyCode.Copy)) {
+            const models = this.controllerBuilder.dispatch('copy');
+            this.props.copy(models);
+            return true;
+        }
+        if (ctrl && (code === KeyCode.Paste)) {
+            const models = this.props.copied();
+            this.controllerBuilder.dispatch('paste', models);
+            return true;
+        }
+        if (ctrl && (code === KeyCode.Cut)) {
+            const models = this.controllerBuilder.dispatch('cut');
+            this.props.copy(models);
+            return true;
+        }
+        if (ctrl && (code === KeyCode.Undo)) {
+            this.controllerBuilder.model = this.undoRedoService.undo();
+            return true;
+        }
+        if (ctrl && event.shiftKey && (code === KeyCode.Undo)) {
+            return true;
+        }
+    }
+}
+
+export { BaseFormBuilderDescriptor, ComponentRegistry, Container, DefaultComponentDescriptor, FormBuilderComponent, FormBuilderContext, KeyCode, ModelBuilder, TUndoRedoService, dark, light };

@@ -753,7 +753,6 @@ class ModelBuilder extends Component {
         this.controllerBuilder = new ControllerBuilder(props.registry, props.propsName || 'props');
         this.controllerBuilder.model = this.props.model;
         this.undoRedoService = props.undoRedoService;
-        this.state = this.controllerBuilder.viewModel;
     }
     componentDidMount() {
         this.controllerBuilder.on(EChangeEvents.PropertiesChange, this.onPropertiesChangeListener);
@@ -774,10 +773,10 @@ class ModelBuilder extends Component {
             onViewModel: (model, setState) => this.onViewModel(model, setState),
             onComponentModel: (model, setState) => this.onComponentModel(model, setState)
         };
-        if (this.state) {
+        if (this.controllerBuilder.viewModel) {
             return (createElement(ThemeProvider, { theme: this.props.theme },
                 createElement(FormBuilderContext.Provider, { value: context },
-                    createElement(Main, Object.assign({}, this.state)))));
+                    createElement(Main, Object.assign({}, this.controllerBuilder.viewModel)))));
         }
         else {
             return createElement("div", null, "Loading...");

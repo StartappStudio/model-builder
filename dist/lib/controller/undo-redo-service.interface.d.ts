@@ -4,4 +4,3 @@ export interface IUndoRedoService {
     redo(): IModel;
     push(model: IModel): void;
 }
-export declare const TUndoRedoService: unique symbol;

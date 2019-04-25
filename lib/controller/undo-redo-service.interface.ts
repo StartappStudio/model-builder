@@ -5,5 +5,3 @@ export interface IUndoRedoService {
     redo(): IModel;
     push(model: IModel): void;
 }
-
-export const TUndoRedoService = Symbol.for('IUndoRedoService');

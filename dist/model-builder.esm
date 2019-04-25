@@ -301,8 +301,6 @@ class DefaultComponentDescriptor extends BaseFormBuilderDescriptor {
     }
 }
 
-const TUndoRedoService = Symbol.for('IUndoRedoService');
-
 class FormBuilderComponent extends Component {
     constructor() {
         super(...arguments);
@@ -868,4 +866,4 @@ class ModelBuilder extends Component {
     }
 }
 
-export { BaseFormBuilderDescriptor, ComponentRegistry, Container, ContainerComponentDescriptor, DefaultComponentDescriptor, FormBuilderComponent, FormBuilderContext, KeyCode, ModelBuilder, TUndoRedoService, dark, light };
+export { BaseFormBuilderDescriptor, ComponentRegistry, Container, ContainerComponentDescriptor, DefaultComponentDescriptor, FormBuilderComponent, FormBuilderContext, KeyCode, ModelBuilder, dark, light };

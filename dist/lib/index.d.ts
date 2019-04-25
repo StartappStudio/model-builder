@@ -1,7 +1,7 @@
 export { ComponentRegistry } from './controller/component-registry';
 export { DefaultComponentDescriptor } from './components/default-component-descriptor';
 export { IViewModel, IComponentProperties, IContainerProperties } from './controller/interfaces';
-export { TUndoRedoService, IUndoRedoService } from './controller/undo-redo-service.interface';
+export { IUndoRedoService } from './controller/undo-redo-service.interface';
 export { IModelBuilderTheme } from './view/interfaces';
 export { IComponentDescriptor } from './controller/component-descriptor';
 export { FormBuilderComponent } from './components/form-builder-component';

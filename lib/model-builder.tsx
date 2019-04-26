@@ -52,6 +52,7 @@ export class ModelBuilder extends React.Component<IModelBuilderProps, IViewModel
         this.controllerBuilder = new ControllerBuilder(props.registry, props.propsName || 'props');
         this.controllerBuilder.model = this.props.model;
         this.undoRedoService = props.undoRedoService;
+        this.state = props.model;
     }
 
     public componentDidMount() {
@@ -69,6 +70,10 @@ export class ModelBuilder extends React.Component<IModelBuilderProps, IViewModel
     }
 
     public render() {
+        if (this.state !== this.props.model) {
+            this.state = this.props.model;
+            this.controllerBuilder.model = this.props.model;
+        }
 
         const context = {
             registry: this.props.registry,
@@ -77,7 +82,7 @@ export class ModelBuilder extends React.Component<IModelBuilderProps, IViewModel
             onComponentModel: (model: IViewModel, setState: (model: IViewModel) => void) => this.onComponentModel(model, setState)
         };
 
-        if (this.controllerBuilder.viewModel) {
+        if (this.state) {
             return (
                 <ThemeProvider theme={this.props.theme}>
                     <FormBuilderContext.Provider value={context}>

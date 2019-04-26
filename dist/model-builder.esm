@@ -753,6 +753,7 @@ class ModelBuilder extends Component {
         this.controllerBuilder = new ControllerBuilder(props.registry, props.propsName || 'props');
         this.controllerBuilder.model = this.props.model;
         this.undoRedoService = props.undoRedoService;
+        this.state = props.model;
     }
     componentDidMount() {
         this.controllerBuilder.on(EChangeEvents.PropertiesChange, this.onPropertiesChangeListener);
@@ -767,13 +768,17 @@ class ModelBuilder extends Component {
         this.controllerBuilder.off(EChangeEvents.SelectMany, this.onSelectManyListener);
     }
     render() {
+        if (this.state !== this.props.model) {
+            this.state = this.props.model;
+            this.controllerBuilder.model = this.props.model;
+        }
         const context = {
             registry: this.props.registry,
             events: this.events,
             onViewModel: (model, setState) => this.onViewModel(model, setState),
             onComponentModel: (model, setState) => this.onComponentModel(model, setState)
         };
-        if (this.controllerBuilder.viewModel) {
+        if (this.state) {
             return (createElement(ThemeProvider, { theme: this.props.theme },
                 createElement(FormBuilderContext.Provider, { value: context },
                     createElement(Main, Object.assign({}, this.controllerBuilder.viewModel)))));
